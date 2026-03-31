@@ -39,7 +39,7 @@
         </div>
 
         <!-- 右侧 history 卡片 -->
-        <div class="history-card">
+        <div class="history-card" @click="goToReview">
           <h2 class="history-title">history</h2>
 
           <div class="history-list">
@@ -98,6 +98,9 @@ const goToProfile = () => {
   router.push('/profile')
 }
 
+const goToReview = () => {
+  router.push('/review')
+}
 const openCamera = () => {
   if (fileInput.value) {
     fileInput.value.click()
@@ -259,8 +262,13 @@ const handleFileChange = (event) => {
   border-radius: 26px;
   padding: 28px 26px;
   box-sizing: border-box;
+  cursor: pointer;
+  transition: transform 0.2s ease;
 }
 
+.history-card:hover{
+  transform: translateY(-2px);
+}
 .history-title {
   margin: 0 0 28px;
   font-size: 22px;
