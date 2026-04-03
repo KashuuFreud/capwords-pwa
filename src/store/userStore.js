@@ -3,65 +3,61 @@ import {
   userLogin,
   userRegister,
   getUserInfo,
-  updateUserInfo
+  userLogout   // 修复：加入正确的登出接口
 } from '@/services'
 
-// 引入你刚写的本地缓存工具
 import { setStorage, getStorage, removeStorage } from '@/utils/storage'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
     userInfo: null,
-    token: getStorage('token') || '' // 从本地缓存读取（更规范）
+    token: getStorage('token') || ''
   }),
 
   actions: {
-    // 登录（你原来的逻辑完全保留，只优化缓存）
+    // 登录
     async login(data) {
       const res = await userLogin(data)
       this.token = res.token
-      // 存入本地缓存
       setStorage('token', res.token)
       return res
     },
 
-    // 注册（不变）
+    // 注册
     async register(data) {
       return await userRegister(data)
     },
 
-    // 获取用户信息（原来逻辑不变）
+    // 获取用户信息
     async fetchUserInfo() {
       try {
         const data = await getUserInfo()
         this.userInfo = data
-        setStorage('userInfo', data) // 缓存用户信息
+        setStorage('userInfo', data)
       } catch (err) {
-        // 接口失败时读取本地缓存
         this.userInfo = getStorage('userInfo')
         console.error('获取用户信息失败，使用本地缓存')
       }
     },
 
-    // 更新用户信息（不变）
-    async updateInfo(data) {
-      return await updateUserInfo(data)
+    // 登出（修复：调用后端接口 + 清理缓存）
+    async logout() {
+      try {
+        await userLogout() // 调用后端登出
+      } catch (err) {
+        console.error('后端登出失败，但仍清理本地缓存')
+      } finally {
+        this.token = ''
+        this.userInfo = null
+        removeStorage('token')
+        removeStorage('userInfo')
+      }
     },
 
-    // 登出（新增，必须要有，项目必备）
-    logout() {
-      this.token = ''
-      this.userInfo = null
-      removeStorage('token')
-      removeStorage('userInfo')
-    },
-
-    // 登录后同步本地数据（新增，你担心的“登录要同步”）
+    // 同步本地数据
     async syncLocalDataToBackend() {
       try {
-        console.log('登录成功 → 开始同步本地缓存数据到后端')
-        // 这里以后对接后端同步接口
-        // 现在写好占位，功能完整
+        console.log('登录成功 → 同步本地缓存数据到后端')
       } catch (err) {
         console.error('同步失败', err)
       }

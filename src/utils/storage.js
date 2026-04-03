@@ -23,12 +23,24 @@ export function getStorage(key) {
   }
 }
 
-// 删除数据
+// 删除数据（增加异常捕获）
 export function removeStorage(key) {
-  localStorage.removeItem(PREFIX + key)
+  try {
+    localStorage.removeItem(PREFIX + key)
+  } catch (err) {
+    console.error('缓存删除失败', err)
+  }
 }
 
-// 清空所有缓存
+// 清空【当前项目】所有缓存
 export function clearStorage() {
-  localStorage.clear()
+  try {
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(PREFIX)) {
+        localStorage.removeItem(key)
+      }
+    })
+  } catch (err) {
+    console.error('清空缓存失败', err)
+  }
 }

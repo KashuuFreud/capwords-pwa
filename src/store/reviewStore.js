@@ -1,12 +1,12 @@
 import { defineStore } from 'pinia'
 import {
+  getUnreviewedWords,
   getTodayReviewList,
-  submitReviewRecord,
+  submitReviewResult,
   getReviewStats,
   getReviewHistory
-} from '@/services'
+} from '@/services/reviewService'
 
-// 引入复习算法
 import {
   getNextReviewTime,
   updateReviewStage,
@@ -15,12 +15,23 @@ import {
 
 export const useReviewStore = defineStore('review', {
   state: () => ({
-    todayReviewList: [],  // 今日复习列表
-    reviewStats: null,    // 复习统计
-    reviewHistory: []     // 复习历史
+    todayReviewList: [],    // 今日复习列表
+    unreviewedWords: [],    // 未复习单词（通用版，无儿童特殊逻辑）
+    reviewStats: null,      // 复习统计
+    reviewHistory: []       // 复习历史
   }),
 
   actions: {
+    // 获取未复习单词
+    async fetchUnreviewedWords() {
+      try {
+        const data = await getUnreviewedWords()
+        this.unreviewedWords = data
+      } catch (err) {
+        console.error('获取未复习单词失败', err)
+      }
+    },
+
     // 获取今日复习列表
     async fetchTodayReview() {
       try {
@@ -31,39 +42,30 @@ export const useReviewStore = defineStore('review', {
       }
     },
 
-    // 提交复习记录 + 自动应用艾宾浩斯算法
+    // 提交复习结果 + 艾宾浩斯算法
     async submitRecordWithAlgorithm(wordId, remember) {
       try {
-        // 1. 找到当前单词
         const word = this.todayReviewList.find(item => item.id === wordId)
-        if (!word) return
+        if (!word) return false
 
-        // 2. 使用复习算法更新阶段和下次复习时间
         const newStage = updateReviewStage(word.stage || 0, remember)
         const nextReviewTime = getNextReviewTime(newStage)
 
-        // 3. 提交到后端
-        await submitReviewRecord({
+        // 按接口要求提交
+        await submitReviewResult({
           wordId,
-          remember,
-          stage: newStage,
-          nextReviewTime
+          isCorrect: remember
         })
 
-        // 4. 本地更新数据
+        // 本地更新
         word.stage = newStage
         word.nextReviewTime = nextReviewTime
 
         return true
       } catch (err) {
-        console.error('提交复习记录失败', err)
+        console.error('提交复习结果失败', err)
         return false
       }
-    },
-
-    // 提交复习记录（原来的接口，保留）
-    async submitRecord(data) {
-      return await submitReviewRecord(data)
     },
 
     // 获取复习统计
@@ -76,7 +78,7 @@ export const useReviewStore = defineStore('review', {
       }
     },
 
-    // 获取复习历史
+    // 获取复习历史（分页）
     async fetchReviewHistory(params) {
       try {
         const data = await getReviewHistory(params)
@@ -86,7 +88,7 @@ export const useReviewStore = defineStore('review', {
       }
     },
 
-    // 算法：筛选今天需要复习的单词
+    // 筛选今天需要复习的单词
     filterTodayReviewWords(wordList) {
       return filterTodayReviews(wordList)
     }

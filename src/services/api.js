@@ -2,24 +2,23 @@ import axios from 'axios'
 
 // 1. 创建 axios 实例，统一配置基础URL、超时时间
 const service = axios.create({
-  // 开发环境用代理，生产环境换真实后端地址
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 10000 // 10秒超时
+  timeout: 15000 // 超时时间
 })
 
-// 2. 请求拦截器：发请求前统一处理（比如加token、加载动画）
+// 2. 请求拦截器：发请求前统一处理
 service.interceptors.request.use(
   config => {
-    // 从localStorage拿token，加到请求头（后续登录功能用）
     const token = localStorage.getItem('token')
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
+    // 儿童端：添加请求标识，便于后端区分儿童/成人接口
+    config.headers['X-User-Type'] = 'child'
     return config
   },
   error => {
-    // 请求错误处理
-    console.error('请求错误:', error)
+    console.error('请求错误😟:', error)
     return Promise.reject(error)
   }
 )
@@ -28,20 +27,21 @@ service.interceptors.request.use(
 service.interceptors.response.use(
   response => {
     const res = response.data
-    // 后端约定：code=200 代表成功，其他代表业务错误
     if (res.code !== 200) {
-      // 这里可以加全局错误提示（比如Element Plus的Message）
-      console.error('接口错误:', res.msg || '请求失败')
-      return Promise.reject(new Error(res.msg || '请求失败'))
+      const childErrMsg = res.msg || '服务器开小差啦😜，再试一次吧～'
+      console.error('接口错误:', childErrMsg)
+      return Promise.reject(new Error(childErrMsg))
     }
-    // 成功的话直接返回data部分，不用每次都res.data.data
     return res.data
   },
   error => {
-    // 网络错误、超时等处理
-    console.error('响应错误:', error)
-    // 可以加全局提示，比如“网络异常，请检查网络”
-    return Promise.reject(error)
+    // 区分网络错误/超时，
+    let errMsg = '网络有点慢哦💡，检查一下WiFi吧～'
+    if (error.message.includes('timeout')) {
+      errMsg = '等太久啦😝，重新试试吧～'
+    }
+    console.error('响应错误:', errMsg)
+    return Promise.reject(new Error(errMsg))
   }
 )
 
