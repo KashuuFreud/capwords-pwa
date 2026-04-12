@@ -16,8 +16,8 @@
               alt="profile"
               class="profile-icon"
             />
-            <button class="profile-entry">
-              <span class="profile-text">我的</span>
+            <button class="profile-entry" type="button">
+              <span class="profile-text">Profile</span>
               <span class="profile-arrow">→</span>
             </button>
           </div>
@@ -40,15 +40,21 @@
             />
           </div>
 
-          <!-- 相机操作菜单 -->
-          <div v-if="showCameraMenu" class="camera-menu">
-            <button class="menu-btn take-photo-btn" @click="goToCameraPage">
-              拍照识词
-            </button>
-            <button class="menu-btn choose-file-btn" @click="chooseFromFile">
-              从相册选择
-            </button>
-          </div>
+          <transition name="fade-slide">
+            <div v-if="showCameraMenu" class="camera-menu">
+              <button
+                class="menu-btn take-photo-btn"
+                type="button"
+                @click="goToCameraPage"
+              >
+                take a pic
+              </button>
+
+              <label for="photo-input" class="menu-btn choose-file-btn">
+                photo library
+              </label>
+            </div>
+          </transition>
         </div>
 
         <!-- 右侧 history 卡片 -->
@@ -77,12 +83,13 @@
         </div>
       </section>
 
-      <!-- 隐藏的文件上传 -->
+      <!-- 真隐藏 input -->
       <input
+        id="photo-input"
         ref="fileInput"
         type="file"
         accept="image/*"
-        class="hidden-input"
+        class="visually-hidden-input"
         @change="handleFileChange"
       />
     </div>
@@ -97,7 +104,6 @@ import cameraIcon from '../assets/icons/camera.png'
 import profileIcon from '../assets/icons/profile.png'
 
 const router = useRouter()
-const fileInput = ref(null)
 const showCameraMenu = ref(false)
 
 const historyWords = ref([
@@ -124,25 +130,13 @@ const goToCameraPage = () => {
   router.push('/camera')
 }
 
-const chooseFromFile = () => {
-  showCameraMenu.value = false
-  if (fileInput.value) {
-    fileInput.value.click()
-  }
-}
-
 const handleFileChange = (event) => {
   const file = event.target.files[0]
-
   if (!file) return
 
-  console.log('已选择图片：', file.name)
-
-  // 以后这里接后端识别接口
-  // 现在先跳转到结果页，模拟“选择图片成功”
+  console.log('selected:', file.name)
+  showCameraMenu.value = false
   router.push('/result')
-
-  // 清空 input，避免连续选择同一张图时不触发 change
   event.target.value = ''
 }
 </script>
@@ -211,6 +205,7 @@ const handleFileChange = (event) => {
   align-items: center;
   gap: 10px;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
 }
 
 .profile-icon {
@@ -260,7 +255,8 @@ const handleFileChange = (event) => {
 .camera-area {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  position: relative;
 }
 
 .camera-card {
@@ -269,13 +265,14 @@ const handleFileChange = (event) => {
   border-radius: 26px;
   box-shadow: 0 25px 45px rgba(112, 96, 50, 0.28);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
   overflow: visible;
 }
 
 .camera-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 30px 52px rgba(112, 96, 50, 0.34);
 }
 
 .camera-image {
@@ -287,6 +284,8 @@ const handleFileChange = (event) => {
   transform: translate(-50%, -50%);
   object-fit: contain;
   display: block;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .camera-menu {
@@ -294,21 +293,29 @@ const handleFileChange = (event) => {
   gap: 14px;
   justify-content: center;
   flex-wrap: wrap;
+  margin-top: 6px;
 }
 
 .menu-btn {
+  min-width: 170px;
   border: none;
   border-radius: 999px;
-  padding: 14px 24px;
+  padding: 15px 24px;
   font-size: 16px;
   font-weight: 700;
+  line-height: 1;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-btn:hover {
   transform: translateY(-2px);
+  opacity: 0.96;
 }
 
 .take-photo-btn {
@@ -374,8 +381,25 @@ const handleFileChange = (event) => {
   cursor: default;
 }
 
-.hidden-input {
-  display: none;
+.visually-hidden-input {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.22s ease;
+}
+
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 
 /* 平板 */
@@ -479,6 +503,12 @@ const handleFileChange = (event) => {
     padding: 18px;
   }
 
+  .camera-image {
+    width: 96%;
+    left: 74%;
+    top: 40%;
+  }
+
   .camera-menu {
     gap: 10px;
     justify-content: center;
@@ -486,8 +516,9 @@ const handleFileChange = (event) => {
 
   .menu-btn {
     width: 100%;
+    min-width: 0;
     font-size: 15px;
-    padding: 12px 18px;
+    padding: 13px 18px;
   }
 
   .history-info .word {
