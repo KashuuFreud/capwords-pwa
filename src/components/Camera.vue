@@ -29,7 +29,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { useWordStore } from '@/stores/wordStore'
+import { useWordStore } from '@/store/wordStore'
 
 const wordStore = useWordStore()
 const videoRef = ref(null)
@@ -104,18 +104,114 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.camera-container { max-width: 600px; margin: 0 auto; padding: 20px; }
-.camera-box, .preview-box { position: relative; border-radius: 12px; overflow: hidden; }
-video, img { width: 100%; display: block; }
-.capture-btn, .retake-btn, .recognize-btn, .add-btn {
-  padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;
+.camera-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
 }
-.capture-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #409eff; color: #fff; }
-.action-btns { display: flex; gap: 10px; padding: 15px; justify-content: center; }
-.retake-btn { background: #f56c6c; color: #fff; }
-.recognize-btn { background: #67c23a; color: #fff; }
-.result-card { margin-top: 20px; padding: 20px; border: 1px solid #eee; border-radius: 12px; }
-.chinese { font-size: 18px; color: #333; margin: 10px 0; }
-.example { color: #666; }
-.add-btn { margin-top: 15px; background: #409eff; color: #fff; }
+
+/* 相机预览框 → 用你们项目的圆角+卡片风格 */
+.camera-box,
+.preview-box {
+  position: relative;
+  border-radius: 26px;
+  overflow: hidden;
+  background: #c56f34; 
+  box-shadow: 0 10px 30px rgba(112, 96, 50, 0.28);
+}
+
+video,
+img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+/* 拍照按钮 → 统一UI风格 */
+.capture-btn {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 16px 36px;
+  border: none;
+  border-radius: 999px;
+  background: #63b07f; /* 项目主绿色 */
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* 按钮组 */
+.action-btns {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  justify-content: center;
+}
+
+/* 重拍按钮 → 红色系（统一UI） */
+.retake-btn {
+  padding: 14px 30px;
+  border: none;
+  border-radius: 999px;
+  background: #eb5757;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 识别按钮 → 绿色系（统一UI） */
+.recognize-btn {
+  padding: 14px 30px;
+  border: none;
+  border-radius: 999px;
+  background: #63b07f;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* 识别结果卡片 → 你们项目风格 */
+.result-card {
+  margin-top: 24px;
+  padding: 26px;
+  background: #cedb9a; /* 顶部卡片浅黄色 */
+  border-radius: 26px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.result-card h3 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  color: #111;
+}
+
+.chinese {
+  font-size: 20px;
+  color: #222;
+  margin: 10px 0;
+}
+
+.example {
+  color: #444;
+  font-size: 16px;
+}
+
+/* 添加到词汇本按钮 */
+.add-btn {
+  margin-top: 18px;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 999px;
+  background: #c56f34;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
 </style>

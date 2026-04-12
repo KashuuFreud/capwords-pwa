@@ -2,27 +2,19 @@ import { defineStore } from 'pinia'
 import {
   recognizeWordByImage,
   addWordToVocab,
-  deleteVocabWords,
-  getVocabByCategory,
-  getVocabCategories,
   getWordList,
-  getWordDetail,
-  toggleWordCollect,
-  getCollectWordList
+  getWordDetail
 } from '@/services'
 
 export const useWordStore = defineStore('word', {
   state: () => ({
-    wordList: [],            // 单词列表
-    wordDetail: null,        // 单词详情
-    collectList: [],         // 收藏列表
-    vocabCategories: [],     // 单词分类列表
-    categoryWordList: [],    // 按分类筛选的单词列表
-    loading: false          // 加载状态
+    wordList: [],        // 所有加入单词本的单词
+    wordDetail: null,    // 当前打开的单词详情
+    loading: false       // 列表加载状态
   }),
 
   actions: {
-    // 拍照识词
+    // 1. 拍照识词
     async recognizeImageWord(formData) {
       try {
         return await recognizeWordByImage(formData)
@@ -31,50 +23,30 @@ export const useWordStore = defineStore('word', {
       }
     },
 
-    // 添加单词到词汇本
+    // 2. 加入单词本（默认未复习）
     async addWord(data) {
       try {
-        return await addWordToVocab(data)
+        const res = await addWordToVocab(data)
+        if (res) {
+          // 新单词默认isReviewed: false，自动进入Reviewing
+          this.wordList.push({ ...data, id: res.id, isReviewed: false })
+        }
+        return res
       } catch (err) {
         console.error('添加单词失败', err)
       }
     },
 
-    // 删除单词（单个/批量）
-    async deleteWords(data) {
-      try {
-        return await deleteVocabWords(data)
-      } catch (err) {
-        console.error('删除单词失败', err)
-      }
-    },
-
-    // 获取所有单词分类
-    async fetchVocabCategories() {
-      try {
-        const data = await getVocabCategories()
-        this.vocabCategories = data
-      } catch (err) {
-        console.error('获取单词分类失败', err)
-      }
-    },
-
-    // 根据分类ID获取单词
-    async fetchVocabByCategory(categoryId) {
-      try {
-        const data = await getVocabByCategory(categoryId)
-        this.categoryWordList = data
-      } catch (err) {
-        console.error('按分类获取单词失败', err)
-      }
-    },
-
-    // 获取单词列表
+    // 3. 获取单词本列表（所有单词）
     async fetchWordList(params) {
       this.loading = true
       try {
         const data = await getWordList(params)
-        this.wordList = data
+        // 确保每个单词都有isReviewed字段，无则默认false
+        this.wordList = data.map(word => ({
+          ...word,
+          isReviewed: word.isReviewed ?? false
+        }))
       } catch (err) {
         console.error('获取单词列表失败', err)
       } finally {
@@ -82,34 +54,42 @@ export const useWordStore = defineStore('word', {
       }
     },
 
-    // 获取单词详情
+    // 4. 获取单词详情
     async fetchWordDetail(wordId) {
       try {
         const data = await getWordDetail(wordId)
-        this.wordDetail = data
+        this.wordDetail = { ...data, isReviewed: data.isReviewed ?? false }
       } catch (err) {
         console.error('获取单词详情失败', err)
       }
     },
 
-    // 收藏/取消收藏单词
-    async fetchToggleCollect(wordId) {
+    // 5. 标记单词已复习/未复习
+    async updateWordReviewStatus(wordId, isReviewed) {
       try {
-        await toggleWordCollect(wordId)
-        await this.fetchCollectList()
-      } catch (err) {
-        console.error('收藏操作失败', err)
-      }
-    },
+        // 更新单词列表中的状态
+        const targetWord = this.wordList.find(w => w.id === wordId)
+        if (targetWord) targetWord.isReviewed = isReviewed
 
-    // 获取收藏列表
-    async fetchCollectList() {
-      try {
-        const data = await getCollectWordList()
-        this.collectList = data
+        // 更新当前详情页的状态
+        if (this.wordDetail?.id === wordId) {
+          this.wordDetail.isReviewed = isReviewed
+        }
+        return true
       } catch (err) {
-        console.error('获取收藏列表失败', err)
+        console.error('更新复习状态失败', err)
+        return false
       }
     }
+  },
+
+  // 6. 核心筛选：对应All/Reviewing/Reviewed（all = reviewing + reviewed）
+  getters: {
+    // 全部单词
+    allWords: (state) => state.wordList,
+    // 未复习（正在复习）的单词
+    reviewingWords: (state) => state.wordList.filter(w => !w.isReviewed),
+    // 已复习的单词
+    reviewedWords: (state) => state.wordList.filter(w => w.isReviewed)
   }
 })
