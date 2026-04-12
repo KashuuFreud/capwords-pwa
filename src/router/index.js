@@ -8,10 +8,12 @@ import Learn from '../views/Learn.vue'
 import Review from '../views/Review.vue'
 import Profile from '../views/Profile.vue'
 import Guide from '../views/Guide.vue'
+import Camera from '../components/Camera.vue'
 
 // 定义路由规则
 const routes = [
   { path: '/', name: 'Home', component: Home },
+  { path: '/camera', name: 'Camera', component: Camera },
   { path: '/result', name: 'Result', component: Result },
   { path: '/learn', name: 'Learn', component: Learn },
   { path: '/review', name: 'Review', component: Review },
