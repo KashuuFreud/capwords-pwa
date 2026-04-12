@@ -3,14 +3,16 @@ import {
   recognizeWordByImage,
   addWordToVocab,
   getWordList,
-  getWordDetail
+  getWordDetail,
+  toggleCollect,         // 收藏/取消收藏
+  toggleReviewStatus     // 切换复习状态
 } from '@/services'
 
 export const useWordStore = defineStore('word', {
   state: () => ({
-    wordList: [],        // 所有加入单词本的单词
+    wordList: [],        // 所有加入单词本的单词（已收藏）
     wordDetail: null,    // 当前打开的单词详情
-    loading: false       // 列表加载状态
+    loading: false       // 加载状态
   }),
 
   actions: {
@@ -23,13 +25,18 @@ export const useWordStore = defineStore('word', {
       }
     },
 
-    // 2. 加入单词本（默认未复习）
+    // 2. 添加单词到单词本（拍照识别后调用）
     async addWord(data) {
       try {
         const res = await addWordToVocab(data)
         if (res) {
-          // 新单词默认isReviewed: false，自动进入Reviewing
-          this.wordList.push({ ...data, id: res.id, isReviewed: false })
+          // 新加入单词：已收藏 + 未复习
+          this.wordList.push({
+            ...data,
+            id: res.id,
+            isCollected: true,    // 已收藏 → 出现在 All
+            isReviewed: false     // 未复习 → 出现在 Reviewing
+          })
         }
         return res
       } catch (err) {
@@ -37,14 +44,15 @@ export const useWordStore = defineStore('word', {
       }
     },
 
-    // 3. 获取单词本列表（所有单词）
+    // 3. 获取单词本列表
     async fetchWordList(params) {
       this.loading = true
       try {
         const data = await getWordList(params)
-        // 确保每个单词都有isReviewed字段，无则默认false
+        // 自动补全状态字段，保证前端不报错
         this.wordList = data.map(word => ({
           ...word,
+          isCollected: word.isCollected ?? true,
           isReviewed: word.isReviewed ?? false
         }))
       } catch (err) {
@@ -58,38 +66,74 @@ export const useWordStore = defineStore('word', {
     async fetchWordDetail(wordId) {
       try {
         const data = await getWordDetail(wordId)
-        this.wordDetail = { ...data, isReviewed: data.isReviewed ?? false }
+        this.wordDetail = {
+          ...data,
+          isCollected: data.isCollected ?? true,
+          isReviewed: data.isReviewed ?? false
+        }
       } catch (err) {
         console.error('获取单词详情失败', err)
       }
     },
 
-    // 5. 标记单词已复习/未复习
-    async updateWordReviewStatus(wordId, isReviewed) {
+    // ==============================
+    // 5. 【核心】切换收藏状态（WordCard 星星）
+    // 控制：加入 All / 移出 All
+    // ==============================
+    async toggleWordCollect(wordId) {
       try {
-        // 更新单词列表中的状态
-        const targetWord = this.wordList.find(w => w.id === wordId)
-        if (targetWord) targetWord.isReviewed = isReviewed
+        await toggleCollect(wordId)
 
-        // 更新当前详情页的状态
+        // 更新本地列表状态
+        const target = this.wordList.find(w => w.id === wordId)
+        if (target) target.isCollected = !target.isCollected
+
+        // 更新详情页
         if (this.wordDetail?.id === wordId) {
-          this.wordDetail.isReviewed = isReviewed
+          this.wordDetail.isCollected = !this.wordDetail.isCollected
         }
+
         return true
       } catch (err) {
-        console.error('更新复习状态失败', err)
+        console.error('收藏状态切换失败', err)
+        return false
+      }
+    },
+
+    // ==============================
+    // 6. 【核心】切换复习状态（FlipCard 对号）
+    // 控制：Reviewing ↔ Reviewed
+    // ==============================
+    async toggleWordReviewStatus(wordId) {
+      try {
+        await toggleReviewStatus(wordId)
+
+        const target = this.wordList.find(w => w.id === wordId)
+        if (target) target.isReviewed = !target.isReviewed
+
+        if (this.wordDetail?.id === wordId) {
+          this.wordDetail.isReviewed = !this.wordDetail.isReviewed
+        }
+
+        return true
+      } catch (err) {
+        console.error('复习状态切换失败', err)
         return false
       }
     }
   },
 
-  // 6. 核心筛选：对应All/Reviewing/Reviewed（all = reviewing + reviewed）
+  // ==============================
+  // 三个分类严格对应页面
+  // ==============================
   getters: {
-    // 全部单词
-    allWords: (state) => state.wordList,
-    // 未复习（正在复习）的单词
-    reviewingWords: (state) => state.wordList.filter(w => !w.isReviewed),
-    // 已复习的单词
-    reviewedWords: (state) => state.wordList.filter(w => w.isReviewed)
+    // All：只显示已收藏的单词
+    allWords: (state) => state.wordList.filter(w => w.isCollected),
+
+    // Reviewing：已收藏 + 未复习
+    reviewingWords: (state) => state.wordList.filter(w => w.isCollected && !w.isReviewed),
+
+    // Reviewed：已收藏 + 已复习
+    reviewedWords: (state) => state.wordList.filter(w => w.isCollected && w.isReviewed)
   }
 })

@@ -1,7 +1,10 @@
 import service from './api'
 
-// 仅保留你业务需要的核心接口
-// 1. 提交复习结果（标记单词已复习/未复习）
+// ============================
+// 复习相关接口（适配 FlipCard 对号切换：Reviewing ↔ Reviewed）
+// ============================
+
+// 1. 提交复习结果
 export function submitReviewResult(data) {
   return service({
     url: '/review/submit',
@@ -10,10 +13,18 @@ export function submitReviewResult(data) {
   })
 }
 
-// 2. 获取复习统计（可选，用于个人主页展示学习数据）
+// 2. 获取复习统计(后续可以扩展的功能)
 export function getReviewStats() {
   return service({
     url: '/review/stats',
     method: 'get'
+  })
+}
+
+// 3. FlipCard 核心：切换单词复习状态（未复习 ↔ 已复习）
+export function toggleReviewStatus(wordId) {
+  return service({
+    url: `/review/${wordId}/toggleStatus`,
+    method: 'post'
   })
 }
