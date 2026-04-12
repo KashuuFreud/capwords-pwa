@@ -64,7 +64,7 @@
                 </div>
 
                 <div class="meaning-cn">
-                  {{ result.meaning || '识别结果' }}
+                  {{ result.meaning || 'result' }}
                 </div>
               </div>
 
