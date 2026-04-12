@@ -131,13 +131,48 @@ const goToCameraPage = () => {
 }
 
 const handleFileChange = (event) => {
-  const file = event.target.files[0]
+  const file = event.target.files?.[0]
   if (!file) return
 
-  console.log('selected:', file.name)
-  showCameraMenu.value = false
-  router.push('/result')
-  event.target.value = ''
+  // 只允许图片
+  if (!file.type.startsWith('image/')) {
+    alert('Please choose an image file.')
+    event.target.value = ''
+    return
+  }
+
+  const reader = new FileReader()
+
+  reader.onload = () => {
+    const base64Image = reader.result
+
+    // 存储当前图片，供 Result.vue 读取
+    localStorage.setItem('capturedImage', base64Image)
+    localStorage.setItem('capturedImageName', file.name)
+
+    // 这里先写一个模拟识别结果，后续接后端时再替换
+    const mockResult = {
+      word: 'apple',
+      phonetic: '/ˈæp.əl/',
+      meaning: '苹果',
+      definition: 'A round fruit that is usually red, green, or yellow.',
+      sentence: 'This is an apple on the table.'
+    }
+
+    localStorage.setItem('wordResult', JSON.stringify(mockResult))
+
+    showCameraMenu.value = false
+    router.push('/result')
+
+    event.target.value = ''
+  }
+
+  reader.onerror = () => {
+    alert('Failed to read the image.')
+    event.target.value = ''
+  }
+
+  reader.readAsDataURL(file)
 }
 </script>
 
