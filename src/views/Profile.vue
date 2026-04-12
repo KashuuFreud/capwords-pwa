@@ -1,50 +1,22 @@
 <template>
-  <div class="profile-loading-page">
-    <div class="loading-card">
-      <p class="loading-text">Loading profile...</p>
-    </div>
+  <div class="profile-view">
+    <ProfileUser v-if="isLoggedIn" />
+    <ProfileGuest v-else />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import ProfileUser from '../components/ProfileUser.vue'
+import ProfileGuest from '../components/ProfileGuest.vue'
 
-const router = useRouter()
-
-onMounted(() => {
-  const token = localStorage.getItem('capwords_token')
-
-  if (token) {
-    router.replace('/profile/user')
-  } else {
-    router.replace('/profile/guest')
-  }
+const isLoggedIn = computed(() => {
+  return !!localStorage.getItem('capwords_token')
 })
 </script>
 
 <style scoped>
-.profile-loading-page {
+.profile-view {
   min-height: 100vh;
-  background: #d8e1cf;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  box-sizing: border-box;
-}
-
-.loading-card {
-  background: #77c39e;
-  border-radius: 32px;
-  padding: 32px 40px;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.08);
-}
-
-.loading-text {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: #1d2a21;
 }
 </style>

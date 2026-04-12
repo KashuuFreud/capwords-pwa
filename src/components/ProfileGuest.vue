@@ -3,12 +3,8 @@
     <div class="guest-card">
       <section class="hero-section">
         <div class="hero-left">
-          <h1 class="hero-title">
-            {{ heroTitle }}
-          </h1>
-          <p class="hero-subtitle">
-            {{ heroSubtitle }}
-          </p>
+          <h1 class="hero-title">{{ heroTitle }}</h1>
+          <p class="hero-subtitle">{{ heroSubtitle }}</p>
         </div>
 
         <div class="hero-avatar">
@@ -25,22 +21,14 @@
         <div v-if="mode === 'entry'" class="entry-layout">
           <div class="entry-card">
             <h2>Welcome back</h2>
-            <p>
-              Log in to continue your own vocabulary journey and sync your review record.
-            </p>
-            <button class="primary-btn" @click="mode = 'login'">
-              Go to Log in →
-            </button>
+            <p>Log in to continue your vocabulary journey and sync your review record.</p>
+            <button class="primary-btn" @click="mode = 'login'">Go to Log in →</button>
           </div>
 
           <div class="entry-card register-card">
             <h2>New here?</h2>
-            <p>
-              Create your own account first. Registration and login are separated here.
-            </p>
-            <button class="secondary-btn" @click="mode = 'register'">
-              Go to Register →
-            </button>
+            <p>Create your account first. Registration and login are separated here.</p>
+            <button class="secondary-btn" @click="mode = 'register'">Go to Register →</button>
           </div>
         </div>
 
@@ -181,7 +169,7 @@ const handleLogin = () => {
   }
 
   localStorage.setItem('capwords_token', 'mock_token_logged_in')
-  router.replace('/profile/user')
+  router.go(0)
 }
 
 const handleRegister = () => {
@@ -219,7 +207,7 @@ const handleRegister = () => {
   localStorage.setItem('capwords_words_count', '0')
   localStorage.setItem('capwords_token', 'mock_token_registered')
 
-  router.replace('/profile/user')
+  router.go(0)
 }
 </script>
 

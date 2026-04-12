@@ -24,18 +24,10 @@
 
       <section class="info-board">
         <div class="board-actions">
-          <button class="icon-btn" @click="toggleEdit" title="Edit">
-            ✎
-          </button>
-          <button class="icon-btn" @click="resetMockData" title="Reset">
-            ⚙
-          </button>
-          <button class="icon-btn" @click="goHome" title="Back">
-            ←
-          </button>
+          <button class="icon-btn" @click="toggleEdit" title="Edit">✎</button>
+          <button class="icon-btn" @click="resetMockData" title="Reset">⚙</button>
+          <button class="icon-btn" @click="goHome" title="Back">←</button>
         </div>
-
-        <div class="board-watermark">试用阶段印</div>
 
         <div class="board-content">
           <div class="info-list">
@@ -82,11 +74,7 @@
             <div class="info-item">
               <h3>Bio</h3>
               <p v-if="!isEditing">{{ profile.bio }}</p>
-              <textarea
-                v-else
-                v-model="editableProfile.bio"
-                rows="3"
-              ></textarea>
+              <textarea v-else v-model="editableProfile.bio" rows="3"></textarea>
             </div>
           </div>
 
@@ -117,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -194,7 +182,7 @@ const saveProfile = () => {
 
 const logout = () => {
   localStorage.removeItem('capwords_token')
-  router.replace('/profile/guest')
+  router.go(0)
 }
 
 const goHome = () => {
