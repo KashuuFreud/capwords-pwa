@@ -7,7 +7,7 @@
             {{ profile.name }},
             <br />
             you have snapped
-            <span class="hero-highlight">{{ profile.words }}</span>
+            <span class="hero-highlight">{{ totalWords }}</span>
             words!
           </h1>
         </div>
@@ -24,9 +24,8 @@
 
       <section class="info-board">
         <div class="board-actions">
-          <button class="icon-btn" @click="toggleEdit" title="Edit">✎</button>
-          <button class="icon-btn" @click="resetMockData" title="Reset">⚙</button>
-          <button class="icon-btn" @click="goHome" title="Back">←</button>
+          <button class="icon-btn" @click="toggleEdit" title="Edit">Edit</button>
+          <button class="icon-btn" @click="goHome" title="Back">Back</button>
         </div>
 
         <div class="board-content">
@@ -105,30 +104,27 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../store/userStore'
+import { useWordStore } from '../store/wordStore'
 
 const router = useRouter()
+const userStore = useUserStore()
+const wordStore = useWordStore()
 const isEditing = ref(false)
 
-const defaultProfile = {
-  name: 'Morley',
-  nickname: 'fanshehu',
-  gender: 'female',
-  grade: 'grade two',
-  location: "Xi'an",
-  account: 'fanshehu001',
-  bio: 'Keep snapping, keep learning.',
-  words: 87
-}
-
-const storedUser = JSON.parse(localStorage.getItem('capwords_user') || 'null')
-const storedWords = Number(localStorage.getItem('capwords_words_count') || '87')
+const metadata = userStore.userInfo?.user_metadata || {}
 
 const profile = reactive({
-  ...defaultProfile,
-  ...(storedUser || {}),
-  words: Number.isNaN(storedWords) ? 87 : storedWords
+  name: metadata.name || userStore.userInfo?.email || 'Learner',
+  nickname: metadata.nickname || 'SnapWord User',
+  gender: metadata.gender || 'other',
+  grade: metadata.grade || 'grade one',
+  location: metadata.location || 'Unknown',
+  account: userStore.userInfo?.email || '',
+  bio: metadata.bio || 'Keep snapping, keep learning.',
+  words: 0
 })
 
 const editableProfile = reactive({
@@ -163,26 +159,13 @@ const saveProfile = () => {
   profile.grade = editableProfile.grade
   profile.location = editableProfile.location
   profile.bio = editableProfile.bio
-
-  localStorage.setItem(
-    'capwords_user',
-    JSON.stringify({
-      name: profile.name,
-      nickname: profile.nickname,
-      gender: profile.gender,
-      grade: profile.grade,
-      location: profile.location,
-      account: profile.account,
-      bio: profile.bio
-    })
-  )
-
   isEditing.value = false
 }
 
 const logout = () => {
-  localStorage.removeItem('capwords_token')
-  router.go(0)
+  userStore.logout().finally(() => {
+    router.go(0)
+  })
 }
 
 const goHome = () => {
@@ -193,16 +176,15 @@ const goToReview = () => {
   router.push('/review')
 }
 
-const resetMockData = () => {
-  localStorage.setItem('capwords_words_count', '87')
-  localStorage.setItem(
-    'capwords_user',
-    JSON.stringify({
-      ...defaultProfile
-    })
-  )
-  window.location.reload()
-}
+const totalWords = computed(() => wordStore.allWords.length)
+
+onMounted(async () => {
+  try {
+    await wordStore.fetchWordList()
+  } catch (error) {
+    console.error('Failed to load profile words:', error)
+  }
+})
 </script>
 
 <style scoped>
@@ -324,25 +306,11 @@ const resetMockData = () => {
 }
 
 .icon-btn {
-  width: 50px;
-  height: 50px;
   border: none;
   background: transparent;
-  font-size: 34px;
+  font-size: 20px;
   color: #191919;
   cursor: pointer;
-}
-
-.board-watermark {
-  position: absolute;
-  left: 50%;
-  top: 48%;
-  transform: translate(-50%, -50%) rotate(-34deg);
-  font-size: 78px;
-  color: rgba(190, 196, 231, 0.55);
-  font-weight: 700;
-  pointer-events: none;
-  white-space: nowrap;
 }
 
 .board-content {
@@ -551,10 +519,6 @@ const resetMockData = () => {
     width: 140px;
     height: 140px;
   }
-
-  .board-watermark {
-    font-size: 58px;
-  }
 }
 
 @media (max-width: 768px) {
@@ -622,14 +586,8 @@ const resetMockData = () => {
     margin-bottom: 12px;
   }
 
-  .icon-btn {
-    width: 40px;
-    height: 40px;
-    font-size: 26px;
-  }
-
-  .board-watermark {
-    font-size: 38px;
+  .board-content {
+    grid-template-columns: 1fr;
   }
 
   .info-item h3 {

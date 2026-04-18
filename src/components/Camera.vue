@@ -1,18 +1,16 @@
 <template>
   <div class="camera-container">
-    <!-- 相机预览 -->
     <div v-if="!capturedImage" class="camera-box">
       <video ref="videoRef" autoplay playsinline></video>
-      <button @click="takePhoto" class="capture-btn">拍照</button>
+      <button @click="takePhoto" class="capture-btn">Take photo</button>
     </div>
 
-    <!-- 拍照后预览 -->
     <div v-else class="preview-box">
-      <img :src="capturedImage" alt="拍摄的图片" />
+      <img :src="capturedImage" alt="Captured preview" />
       <div class="action-btns">
-        <button @click="reTake" class="retake-btn">重拍</button>
+        <button @click="reTake" class="retake-btn">Retake</button>
         <button @click="recognizeWord" class="recognize-btn">
-          {{ loading ? '识别中...' : '识别单词' }}
+          {{ loading ? 'Recognizing...' : 'Recognize word' }}
         </button>
       </div>
     </div>
@@ -22,6 +20,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { recognizeWordByImage } from '../services'
 
 const router = useRouter()
 const videoRef = ref(null)
@@ -39,15 +38,15 @@ onMounted(async () => {
       videoRef.value.srcObject = stream
     }
   } catch (err) {
-    console.error('相机权限获取失败', err)
-    alert('请允许相机权限以使用拍照识词功能')
+    console.error('Failed to get camera permission', err)
+    alert('Please allow camera access to use this feature.')
   }
 })
 
 const takePhoto = () => {
   const video = videoRef.value
   if (!video || !video.videoWidth || !video.videoHeight) {
-    alert('相机尚未准备好，请稍后再试')
+    alert('Camera is not ready yet.')
     return
   }
 
@@ -67,29 +66,28 @@ const reTake = () => {
 
 const recognizeWord = async () => {
   if (!capturedImage.value) {
-    alert('请先拍照')
+    alert('Please take a photo first.')
     return
   }
 
   loading.value = true
 
   try {
+    const blob = await fetch(capturedImage.value).then(response => response.blob())
+    const file = new File([blob], `camera-${Date.now()}.jpg`, { type: 'image/jpeg' })
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const result = await recognizeWordByImage(formData)
+
     localStorage.setItem('capturedImage', capturedImage.value)
-
-    const mockResult = {
-      word: 'apple',
-      phonetic: '/ˈæp.əl/',
-      meaning: '苹果',
-      definition: 'A round fruit that is usually red, green, or yellow.',
-      sentence: 'This is an apple on the table.'
-    }
-
-    localStorage.setItem('wordResult', JSON.stringify(mockResult))
+    localStorage.setItem('capturedImageName', file.name)
+    localStorage.setItem('wordResult', JSON.stringify(result))
 
     router.push('/result')
   } catch (err) {
-    console.error('识别失败', err)
-    alert('识别失败，请重试')
+    console.error('Recognize failed', err)
+    alert(err.message || 'Recognize failed, please try again.')
   } finally {
     loading.value = false
   }

@@ -1,20 +1,18 @@
 <template>
   <div class="learn-page">
     <div class="learn-shell">
-      <!-- 顶部 -->
       <section class="top-bar">
         <h1 class="page-title">learn</h1>
 
         <button class="back-btn" type="button" @click="goResult">
           <span>Back</span>
-          <span>→</span>
+          <span>-></span>
         </button>
       </section>
 
       <div class="divider"></div>
 
       <section class="learn-content">
-        <!-- 左侧主学习卡 -->
         <div class="study-panel">
           <div class="study-card">
             <div class="wave-line"></div>
@@ -30,7 +28,7 @@
               </div>
 
               <div class="card-center">
-                <p class="small-label">today’s word</p>
+                <p class="small-label">today's word</p>
 
                 <h2 class="word-title">
                   {{ currentWord.word || 'word' }}
@@ -41,7 +39,7 @@
                 </p>
 
                 <p class="meaning">
-                  {{ showMeaning ? (currentWord.meaning || '中文释义') : 'Tap to reveal meaning' }}
+                  {{ showMeaning ? (currentWord.wordCn || currentWord.meaning || '中文释义') : 'Tap to reveal meaning' }}
                 </p>
 
                 <div class="flip-hint">
@@ -51,10 +49,10 @@
 
               <div class="card-actions">
                 <button class="icon-btn" type="button" @click="speakWord" title="Play pronunciation">
-                  🔊
+                  Play
                 </button>
                 <button class="icon-btn" type="button" @click="toggleMeaning" title="Show meaning">
-                  {{ showMeaning ? '🙈' : '👀' }}
+                  {{ showMeaning ? 'Hide' : 'Show' }}
                 </button>
               </div>
             </div>
@@ -71,7 +69,6 @@
           </div>
         </div>
 
-        <!-- 右侧信息区 -->
         <div class="detail-panel">
           <div class="info-card highlight-card">
             <div class="info-top">
@@ -79,7 +76,7 @@
               <span class="mini-badge">AI note</span>
             </div>
             <p>
-              {{ currentWord.definition || 'Detailed definition will appear here.' }}
+              {{ currentWord.definition || currentWord.wordCn || 'Detailed definition will appear here.' }}
             </p>
           </div>
 
@@ -106,7 +103,7 @@
             <div class="progress-meta">
               <div class="meta-item">
                 <span class="meta-label">current</span>
-                <span class="meta-value">{{ currentIndex + 1 }}</span>
+                <span class="meta-value">{{ words.length ? currentIndex + 1 : 0 }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">total</span>
@@ -131,27 +128,39 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useWordStore } from '../store/wordStore'
 
 const router = useRouter()
+const wordStore = useWordStore()
 
 const currentIndex = ref(0)
 const showMeaning = ref(false)
+const sessionWord = ref(null)
 
-const words = ref([])
+const words = computed(() => {
+  if (wordStore.allWords.length) {
+    return wordStore.allWords
+  }
+
+  return sessionWord.value ? [sessionWord.value] : []
+})
 
 const currentWord = computed(() => {
   if (!words.value.length) {
     return {
+      id: null,
       word: '',
       phonetic: '',
       meaning: '',
+      wordCn: '',
       definition: '',
       sentence: ''
     }
   }
-  return words.value[currentIndex.value]
+
+  return words.value[currentIndex.value] || words.value[0]
 })
 
 const progressPercent = computed(() => {
@@ -164,39 +173,34 @@ const progressText = computed(() => {
   return `${Math.round(progressPercent.value)}%`
 })
 
-onMounted(() => {
-  const savedReviewWords = JSON.parse(localStorage.getItem('reviewWords') || '[]')
-  const savedResult = localStorage.getItem('wordResult')
-
-  if (savedReviewWords.length) {
-    words.value = savedReviewWords
-  } else if (savedResult) {
-    try {
+onMounted(async () => {
+  try {
+    const savedResult = localStorage.getItem('wordResult')
+    if (savedResult) {
       const parsed = JSON.parse(savedResult)
-      words.value = [
-        {
-          word: parsed.word || '',
-          phonetic: parsed.phonetic || '',
-          meaning: parsed.meaning || '',
-          definition: parsed.definition || '',
-          sentence: parsed.sentence || '',
-          checked: false
-        }
-      ]
-    } catch (error) {
-      console.error('Failed to parse wordResult:', error)
-    }
-  } else {
-    words.value = [
-      {
-        word: 'apple',
-        phonetic: '/ˈæp.əl/',
-        meaning: '苹果',
-        definition: 'A round fruit with red, green, or yellow skin.',
-        sentence: 'I eat an apple after lunch every day.',
-        checked: false
+      sessionWord.value = {
+        id: parsed.id || null,
+        word: parsed.word || '',
+        wordCn: parsed.wordCn || parsed.translation || parsed.meaning || '',
+        meaning: parsed.meaning || parsed.translation || parsed.wordCn || '',
+        phonetic: parsed.phonetic || '',
+        definition: parsed.definition || '',
+        sentence: parsed.sentence || ''
       }
-    ]
+    }
+
+    await wordStore.fetchWordList()
+    const savedWord = localStorage.getItem('savedWord')
+
+    if (savedWord) {
+      const parsed = JSON.parse(savedWord)
+      const index = wordStore.allWords.findIndex(word => word.id === parsed.id)
+      if (index >= 0) {
+        currentIndex.value = index
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load learn data:', error)
   }
 })
 
@@ -252,25 +256,15 @@ const nextWord = () => {
   showMeaning.value = false
 }
 
-const markReviewed = () => {
-  if (!words.value.length) return
+const markReviewed = async () => {
+  if (!currentWord.value.id) return
 
-  const savedWords = JSON.parse(localStorage.getItem('reviewWords') || '[]')
-
-  const updatedWords = savedWords.map((item, index) => {
-    if (index === currentIndex.value || item.word === currentWord.value.word) {
-      return {
-        ...item,
-        checked: true
-      }
-    }
-    return item
-  })
-
-  localStorage.setItem('reviewWords', JSON.stringify(updatedWords))
-  words.value = updatedWords
-
-  alert(`"${currentWord.value.word}" has been marked as reviewed.`)
+  try {
+    await wordStore.toggleWordReviewStatus(currentWord.value.id)
+    alert(`"${currentWord.value.word}" has been marked as reviewed.`)
+  } catch (error) {
+    alert(error.message || 'Failed to update review status.')
+  }
 }
 </script>
 
@@ -476,13 +470,14 @@ const markReviewed = () => {
 }
 
 .icon-btn {
-  width: 54px;
+  min-width: 54px;
   height: 54px;
   border: none;
-  border-radius: 50%;
+  border-radius: 27px;
   background: rgba(255, 255, 255, 0.38);
-  font-size: 24px;
+  font-size: 16px;
   cursor: pointer;
+  padding: 0 16px;
 }
 
 .primary-actions {

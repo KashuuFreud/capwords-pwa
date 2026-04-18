@@ -1,7 +1,6 @@
 <template>
   <div class="review-page">
     <div class="review-card">
-      <!-- 顶部 -->
       <section class="top-section">
         <div class="top-row">
           <h1 class="page-title">Review</h1>
@@ -15,14 +14,14 @@
 
             <button class="back-btn" @click="goBackHome">
               <span>Back</span>
-              <span>→</span>
+              <span>-></span>
             </button>
           </div>
         </div>
 
         <div class="divider"></div>
 
-        <h2 class="headline">let’s see what did we learn!</h2>
+        <h2 class="headline">let's see what did we learn!</h2>
 
         <div class="divider"></div>
 
@@ -53,7 +52,6 @@
         </div>
       </section>
 
-      <!-- 四个学习卡片 -->
       <section class="cards-section">
         <div
           v-for="item in filteredCards"
@@ -63,21 +61,25 @@
           <div class="card-top">
             <div class="wave-line"></div>
 
-            <svg class="card-icon" aria-hidden="true">
-              <use :xlink:href="item.icon"></use>
-            </svg>
+            <div class="card-icon" aria-hidden="true">
+              {{ item.word?.slice(0, 1)?.toUpperCase() || '?' }}
+            </div>
 
-            <div v-if="item.tag" class="corner-tag">{{ item.tag }}</div>
+            <div v-if="item.wordCn" class="corner-tag">{{ item.wordCn }}</div>
           </div>
 
           <div class="card-bottom">
-            <h3 class="card-title">{{ item.title }}</h3>
-            <p class="card-desc">{{ item.desc }}</p>
+            <h3 class="card-title">{{ item.word }}</h3>
+            <p class="card-desc">{{ item.wordCn || item.translation || 'No translation yet.' }}</p>
           </div>
+        </div>
+
+        <div v-if="!loading && !filteredCards.length" class="empty-card">
+          <h3 class="card-title">No words yet</h3>
+          <p class="card-desc">Save words to your account first, then they will appear here.</p>
         </div>
       </section>
 
-      <!-- Learn more -->
       <section class="learn-more-section">
         <div class="section-divider"></div>
 
@@ -85,7 +87,7 @@
 
         <p class="learn-more-intro">
           Our platform turns your photos into interactive English learning tools.
-          Snap or upload any image, and we’ll extract key vocabulary, generate
+          Snap or upload any image, and we'll extract key vocabulary, generate
           real-life dialogues, and create personalized practice exercises tailored
           to your level. These pages will guide you through all the features you
           need to master English effectively.
@@ -93,17 +95,17 @@
 
         <div class="guide-grid">
           <div class="guide-item">
-            <h3>GUIDE – Vocabulary Extraction</h3>
+            <h3>GUIDE - Vocabulary Extraction</h3>
             <p>
               Our AI automatically identifies objects, actions, and scenes from
               your photos, then extracts high-frequency English words and phrases.
-              No more manual lookup—learn the vocabulary you actually see and use
+              No more manual lookup - learn the vocabulary you actually see and use
               in daily life, with definitions and example sentences built right in.
             </p>
           </div>
 
           <div class="guide-item">
-            <h3>GUIDE – Auto Contextual Translation</h3>
+            <h3>GUIDE - Auto Contextual Translation</h3>
             <p>
               Get instant, context-aware translations for every element in your
               photo. The system adapts to different scenarios (travel, work,
@@ -113,7 +115,7 @@
           </div>
 
           <div class="guide-item">
-            <h3>Core Feature – Pronunciation Practice</h3>
+            <h3>Core Feature - Pronunciation Practice</h3>
             <p>
               Listen to native-speaker audio for every word and phrase extracted
               from your photos. Practice your pronunciation with real-time feedback,
@@ -123,7 +125,7 @@
           </div>
 
           <div class="guide-item">
-            <h3>Core Feature – Progress Tracking & Custom Learning</h3>
+            <h3>Core Feature - Progress Tracking & Custom Learning</h3>
             <p>
               Track your learning journey with personalized stats: word mastery,
               practice completion rates, and weekly goals. Customize your practice
@@ -138,51 +140,29 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useWordStore } from '../store/wordStore'
 import calendarIcon from '../assets/icons/calendar.png'
 
 const router = useRouter()
+const wordStore = useWordStore()
 const activeTab = ref('all')
 
-const cards = ref([
-  {
-    id: 1,
-    title: 'Cat',
-    desc: 'The cat is sleeping.',
-    type: 'all',
-    icon: '#icon-plus',
-    tag: ''
-  },
-  {
-    id: 2,
-    title: 'Typography',
-    desc: 'Details all of Material 3’s text styles, alongside a selection of components so you can see your changes in real time.',
-    type: 'reviewing',
-    icon: '#icon-font',
-    tag: ''
-  },
-  {
-    id: 3,
-    title: 'Themes',
-    desc: 'Details all of Material 3’s text styles, alongside a selection of components so you can see your changes in real time.',
-    type: 'reviewed',
-    icon: '#icon-paint',
-    tag: ''
-  },
-  {
-    id: 4,
-    title: 'Shape',
-    desc: 'Shape components — including cut corners — that you can use in your custom components.',
-    type: 'reviewing',
-    icon: '#icon-shape',
-    tag: ''
-  }
-])
+const loading = computed(() => wordStore.loading)
 
 const filteredCards = computed(() => {
-  if (activeTab.value === 'all') return cards.value
-  return cards.value.filter(item => item.type === activeTab.value)
+  if (activeTab.value === 'reviewing') return wordStore.reviewingWords
+  if (activeTab.value === 'reviewed') return wordStore.reviewedWords
+  return wordStore.allWords
+})
+
+onMounted(async () => {
+  try {
+    await wordStore.fetchWordList()
+  } catch (error) {
+    console.error('Failed to load review list:', error)
+  }
 })
 
 const goBackHome = () => {
@@ -312,7 +292,8 @@ const goBackHome = () => {
   gap: 24px;
 }
 
-.learn-card {
+.learn-card,
+.empty-card {
   border-radius: 30px;
   overflow: hidden;
   background: transparent;
@@ -371,7 +352,12 @@ const goBackHome = () => {
   transform: translate(-50%, -50%);
   width: 62px;
   height: 62px;
-  fill: #4b0822;
+  color: #4b0822;
+  font-size: 42px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .corner-tag {
@@ -384,7 +370,8 @@ const goBackHome = () => {
   pointer-events: none;
 }
 
-.card-bottom {
+.card-bottom,
+.empty-card {
   background: #e87a3b;
   padding: 28px 24px 20px;
   min-height: 100px;
@@ -454,7 +441,6 @@ const goBackHome = () => {
   color: #355145;
 }
 
-/* 平板 */
 @media (max-width: 1024px) {
   .review-page {
     padding: 16px;
@@ -493,7 +479,6 @@ const goBackHome = () => {
   }
 }
 
-/* 手机 */
 @media (max-width: 768px) {
   .review-page {
     padding: 10px;
@@ -565,6 +550,7 @@ const goBackHome = () => {
   .card-icon {
     width: 50px;
     height: 50px;
+    font-size: 34px;
   }
 
   .corner-tag {
@@ -573,7 +559,8 @@ const goBackHome = () => {
     bottom: 22px;
   }
 
-  .card-bottom {
+  .card-bottom,
+  .empty-card {
     padding: 20px 18px 18px;
   }
 

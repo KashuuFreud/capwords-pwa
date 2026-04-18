@@ -22,19 +22,19 @@
           <div class="entry-card">
             <h2>Welcome back</h2>
             <p>Log in to continue your vocabulary journey and sync your review record.</p>
-            <button class="primary-btn" @click="mode = 'login'">Go to Log in →</button>
+            <button class="primary-btn" @click="mode = 'login'">Go to Log in</button>
           </div>
 
           <div class="entry-card register-card">
             <h2>New here?</h2>
             <p>Create your account first. Registration and login are separated here.</p>
-            <button class="secondary-btn" @click="mode = 'register'">Go to Register →</button>
+            <button class="secondary-btn" @click="mode = 'register'">Go to Register</button>
           </div>
         </div>
 
         <div v-else-if="mode === 'login'" class="form-layout">
           <div class="form-card">
-            <button class="top-back" @click="mode = 'entry'">←</button>
+            <button class="top-back" @click="mode = 'entry'">Back</button>
             <h2 class="form-title">Log in</h2>
 
             <div class="field">
@@ -47,12 +47,10 @@
               <input v-model.trim="loginForm.password" type="password" placeholder="Enter your password" />
             </div>
 
-            <p class="hint-text">
-              Demo account: <strong>fanshehu001</strong> / <strong>123456</strong>
-            </p>
-
             <div class="form-actions">
-              <button class="primary-btn" @click="handleLogin">Log in</button>
+              <button class="primary-btn" :disabled="submitting" @click="handleLogin">
+                {{ submitting ? 'Logging in...' : 'Log in' }}
+              </button>
               <button class="text-btn" @click="mode = 'register'">No account yet? Register</button>
             </div>
           </div>
@@ -60,7 +58,7 @@
 
         <div v-else class="form-layout">
           <div class="form-card register-panel">
-            <button class="top-back" @click="mode = 'entry'">←</button>
+            <button class="top-back" @click="mode = 'entry'">Back</button>
             <h2 class="form-title">Register</h2>
 
             <div class="field">
@@ -80,11 +78,17 @@
 
             <div class="field">
               <label>Confirm password</label>
-              <input v-model.trim="registerForm.confirmPassword" type="password" placeholder="Type it again" />
+              <input
+                v-model.trim="registerForm.confirmPassword"
+                type="password"
+                placeholder="Type it again"
+              />
             </div>
 
             <div class="form-actions">
-              <button class="secondary-btn" @click="handleRegister">Register</button>
+              <button class="secondary-btn" :disabled="submitting" @click="handleRegister">
+                {{ submitting ? 'Creating...' : 'Register' }}
+              </button>
               <button class="text-btn" @click="mode = 'login'">Already have an account? Log in</button>
             </div>
           </div>
@@ -99,10 +103,14 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../store/userStore'
 
 const router = useRouter()
+const userStore = useUserStore()
+
 const mode = ref('entry')
 const message = ref('')
+const submitting = ref(false)
 
 const loginForm = reactive({
   account: '',
@@ -128,7 +136,7 @@ const heroSubtitle = computed(() => {
   return 'Choose log in or register to enter your personal space.'
 })
 
-const handleLogin = () => {
+const handleLogin = async () => {
   message.value = ''
 
   if (!loginForm.account || !loginForm.password) {
@@ -136,43 +144,19 @@ const handleLogin = () => {
     return
   }
 
-  const savedUser = JSON.parse(localStorage.getItem('capwords_user') || 'null')
+  submitting.value = true
 
-  const isDemo =
-    loginForm.account === 'fanshehu001' && loginForm.password === '123456'
-
-  const isRegisteredUser =
-    savedUser &&
-    loginForm.account === savedUser.account &&
-    loginForm.password === (localStorage.getItem('capwords_password') || '')
-
-  if (!isDemo && !isRegisteredUser) {
-    message.value = 'Incorrect account or password.'
-    return
+  try {
+    await userStore.login(loginForm)
+    router.go(0)
+  } catch (error) {
+    message.value = error.message || 'Incorrect account or password.'
+  } finally {
+    submitting.value = false
   }
-
-  if (!savedUser && isDemo) {
-    localStorage.setItem(
-      'capwords_user',
-      JSON.stringify({
-        name: 'Morley',
-        nickname: 'fanshehu',
-        gender: 'female',
-        grade: 'grade two',
-        location: "Xi'an",
-        account: 'fanshehu001',
-        bio: 'Keep snapping, keep learning.'
-      })
-    )
-    localStorage.setItem('capwords_password', '123456')
-    localStorage.setItem('capwords_words_count', '87')
-  }
-
-  localStorage.setItem('capwords_token', 'mock_token_logged_in')
-  router.go(0)
 }
 
-const handleRegister = () => {
+const handleRegister = async () => {
   message.value = ''
 
   if (
@@ -190,24 +174,26 @@ const handleRegister = () => {
     return
   }
 
-  localStorage.setItem(
-    'capwords_user',
-    JSON.stringify({
-      name: registerForm.name,
-      nickname: registerForm.name,
-      gender: 'other',
-      grade: 'grade one',
-      location: 'Unknown',
+  submitting.value = true
+
+  try {
+    await userStore.register({
       account: registerForm.account,
-      bio: 'A new learner in CapWords.'
+      email: registerForm.account,
+      password: registerForm.password
     })
-  )
 
-  localStorage.setItem('capwords_password', registerForm.password)
-  localStorage.setItem('capwords_words_count', '0')
-  localStorage.setItem('capwords_token', 'mock_token_registered')
+    await userStore.login({
+      account: registerForm.account,
+      password: registerForm.password
+    })
 
-  router.go(0)
+    router.go(0)
+  } catch (error) {
+    message.value = error.message || 'Register failed.'
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -376,7 +362,7 @@ const handleRegister = () => {
   right: 28px;
   border: none;
   background: transparent;
-  font-size: 34px;
+  font-size: 18px;
   cursor: pointer;
   color: #171515;
 }
@@ -406,12 +392,6 @@ const handleRegister = () => {
   outline: none;
 }
 
-.hint-text {
-  margin: 8px 0 0;
-  font-size: 15px;
-  color: #6f5b3f;
-}
-
 .form-actions {
   display: flex;
   gap: 14px;
@@ -428,6 +408,12 @@ const handleRegister = () => {
   font-size: 17px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.primary-btn:disabled,
+.secondary-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
 .primary-btn {
@@ -545,7 +531,7 @@ const handleRegister = () => {
   .top-back {
     top: 16px;
     right: 18px;
-    font-size: 26px;
+    font-size: 16px;
   }
 }
 </style>

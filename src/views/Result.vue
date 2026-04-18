@@ -6,14 +6,13 @@
 
         <button class="back-btn" type="button" @click="goHome">
           <span>Back</span>
-          <span>→</span>
+          <span>-></span>
         </button>
       </section>
 
       <div class="divider"></div>
 
       <section class="result-content">
-        <!-- 左侧图片预览 -->
         <div class="preview-panel">
           <div class="preview-header">
             <span class="preview-label">your photo</span>
@@ -39,7 +38,6 @@
           </button>
         </div>
 
-        <!-- 右侧单词结果 -->
         <div class="word-panel">
           <div class="word-card">
             <div class="wave-line"></div>
@@ -75,7 +73,7 @@
                   title="Play pronunciation"
                   @click="speakWord"
                 >
-                  🔊
+                  Play
                 </button>
 
                 <button
@@ -84,7 +82,7 @@
                   title="Record"
                   @click="mockRecord"
                 >
-                  🎤
+                  Rec
                 </button>
               </div>
             </div>
@@ -93,7 +91,7 @@
           <div class="info-grid">
             <div class="info-card">
               <h3>meanings</h3>
-              <p>{{ result.definition || 'Describe the word here.' }}</p>
+              <p>{{ result.definition || result.meaning || 'Describe the word here.' }}</p>
             </div>
 
             <div class="info-card">
@@ -103,8 +101,8 @@
           </div>
 
           <div class="action-row">
-            <button class="secondary-btn" type="button" @click="saveWord">
-              Add to review
+            <button class="secondary-btn" type="button" :disabled="saving" @click="saveWord">
+              {{ saving ? 'Saving...' : 'Add to review' }}
             </button>
 
             <button class="primary-btn" type="button" @click="goLearn">
@@ -120,17 +118,24 @@
 <script setup>
 import { reactive, ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { addWordToVocab } from '../services'
 
 const router = useRouter()
 
 const capturedImage = ref('')
+const saving = ref(false)
 
 const result = reactive({
+  imageUrl: '',
+  stickerUrl: '',
   word: '',
+  wordEn: '',
+  wordCn: '',
   phonetic: '',
   meaning: '',
   definition: '',
-  sentence: ''
+  sentence: '',
+  candidates: []
 })
 
 const hasImage = computed(() => !!capturedImage.value)
@@ -146,11 +151,16 @@ onMounted(() => {
   if (savedResult) {
     try {
       const parsed = JSON.parse(savedResult)
+      result.imageUrl = parsed.imageUrl || ''
+      result.stickerUrl = parsed.stickerUrl || ''
       result.word = parsed.word || ''
+      result.wordEn = parsed.wordEn || parsed.word || ''
+      result.wordCn = parsed.wordCn || parsed.translation || ''
       result.phonetic = parsed.phonetic || ''
-      result.meaning = parsed.meaning || ''
+      result.meaning = parsed.meaning || parsed.translation || parsed.wordCn || ''
       result.definition = parsed.definition || ''
       result.sentence = parsed.sentence || ''
+      result.candidates = parsed.candidates || []
     } catch (error) {
       console.error('Failed to parse wordResult:', error)
     }
@@ -165,29 +175,35 @@ const goLearn = () => {
   router.push('/learn')
 }
 
-const saveWord = () => {
+const saveWord = async () => {
   if (!result.word) {
     alert('No word result to save yet.')
     return
   }
 
-  const savedWords = JSON.parse(localStorage.getItem('reviewWords') || '[]')
+  saving.value = true
 
-  const exists = savedWords.some((item) => item.word === result.word)
-
-  if (!exists) {
-    savedWords.push({
+  try {
+    const response = await addWordToVocab({
+      imageUrl: result.imageUrl || capturedImage.value,
+      stickerUrl: result.stickerUrl,
       word: result.word,
-      meaning: result.meaning,
-      phonetic: result.phonetic,
-      definition: result.definition,
-      sentence: result.sentence,
-      checked: false
+      wordEn: result.wordEn || result.word,
+      wordCn: result.wordCn || result.meaning,
+      candidates: result.candidates,
+      isCollected: true,
+      isReviewed: false
     })
-    localStorage.setItem('reviewWords', JSON.stringify(savedWords))
+
+    if (response?.word) {
+      localStorage.setItem('savedWord', JSON.stringify(response.word))
+    }
+
     alert(`"${result.word}" has been added to your review list.`)
-  } else {
-    alert(`"${result.word}" is already in your review list.`)
+  } catch (error) {
+    alert(error.message || 'Failed to save the word.')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -468,13 +484,14 @@ const mockRecord = () => {
 }
 
 .icon-btn {
-  width: 54px;
+  min-width: 54px;
   height: 54px;
   border: none;
-  border-radius: 50%;
+  border-radius: 27px;
   background: rgba(255, 255, 255, 0.38);
-  font-size: 24px;
+  font-size: 16px;
   cursor: pointer;
+  padding: 0 16px;
 }
 
 .info-grid {
@@ -520,6 +537,11 @@ const mockRecord = () => {
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.secondary-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
 }
 
 .secondary-btn {

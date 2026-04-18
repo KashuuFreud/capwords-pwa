@@ -9,10 +9,10 @@
 import { computed } from 'vue'
 import ProfileUser from '../components/ProfileUser.vue'
 import ProfileGuest from '../components/ProfileGuest.vue'
+import { useUserStore } from '../store/userStore'
 
-const isLoggedIn = computed(() => {
-  return !!localStorage.getItem('capwords_token')
-})
+const userStore = useUserStore()
+const isLoggedIn = computed(() => userStore.isLoggedIn)
 </script>
 
 <style scoped>

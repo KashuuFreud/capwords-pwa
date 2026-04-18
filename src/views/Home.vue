@@ -1,11 +1,10 @@
 <template>
   <div class="home-page">
     <div class="home-card">
-      <!-- 顶部区域 -->
       <section class="hero-section">
         <div class="hero-left">
           <h1 class="hero-title">
-            where there is a will，there’s a way
+            where there is a will, there is a way
           </h1>
         </div>
 
@@ -18,7 +17,7 @@
             />
             <button class="profile-entry" type="button">
               <span class="profile-text">Profile</span>
-              <span class="profile-arrow">→</span>
+              <span class="profile-arrow">-></span>
             </button>
           </div>
         </div>
@@ -28,9 +27,7 @@
 
       <div class="date-text">date</div>
 
-      <!-- 下方内容区 -->
       <section class="content-section">
-        <!-- 左侧相机区域 -->
         <div class="camera-area">
           <div class="camera-card" @click="toggleCameraMenu">
             <img
@@ -51,13 +48,12 @@
               </button>
 
               <label for="photo-input" class="menu-btn choose-file-btn">
-                photo library
+                {{ recognizing ? 'recognizing...' : 'photo library' }}
               </label>
             </div>
           </transition>
         </div>
 
-        <!-- 右侧 history 卡片 -->
         <div class="history-card" @click="goToReview">
           <h2 class="history-title">history</h2>
 
@@ -83,13 +79,12 @@
         </div>
       </section>
 
-      <!-- 真隐藏 input -->
       <input
         id="photo-input"
-        ref="fileInput"
         type="file"
         accept="image/*"
         class="visually-hidden-input"
+        :disabled="recognizing"
         @change="handleFileChange"
       />
     </div>
@@ -99,18 +94,20 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { recognizeWordByImage } from '../services'
 
 import cameraIcon from '../assets/icons/camera.png'
 import profileIcon from '../assets/icons/profile.png'
 
 const router = useRouter()
 const showCameraMenu = ref(false)
+const recognizing = ref(false)
 
 const historyWords = ref([
-  { word: 'apple', meaning: 'n.苹果', checked: true },
-  { word: 'boy', meaning: 'n.男孩', checked: false },
-  { word: 'phone', meaning: 'n.手机', checked: true },
-  { word: 'cup', meaning: 'n.杯子', checked: true }
+  { word: 'apple', meaning: 'n. apple', checked: true },
+  { word: 'boy', meaning: 'n. boy', checked: false },
+  { word: 'phone', meaning: 'n. phone', checked: true },
+  { word: 'cup', meaning: 'n. cup', checked: true }
 ])
 
 const goToProfile = () => {
@@ -130,49 +127,46 @@ const goToCameraPage = () => {
   router.push('/camera')
 }
 
-const handleFileChange = (event) => {
+async function recognizeAndStore(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  const previewDataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('Failed to read the image.'))
+    reader.readAsDataURL(file)
+  })
+
+  const response = await recognizeWordByImage(formData)
+
+  localStorage.setItem('capturedImage', previewDataUrl)
+  localStorage.setItem('capturedImageName', file.name)
+  localStorage.setItem('wordResult', JSON.stringify(response))
+}
+
+const handleFileChange = async event => {
   const file = event.target.files?.[0]
   if (!file) return
 
-  // 只允许图片
   if (!file.type.startsWith('image/')) {
     alert('Please choose an image file.')
     event.target.value = ''
     return
   }
 
-  const reader = new FileReader()
+  recognizing.value = true
 
-  reader.onload = () => {
-    const base64Image = reader.result
-
-    // 存储当前图片，供 Result.vue 读取
-    localStorage.setItem('capturedImage', base64Image)
-    localStorage.setItem('capturedImageName', file.name)
-
-    // 这里先写一个模拟识别结果，后续接后端时再替换
-    const mockResult = {
-      word: 'apple',
-      phonetic: '/ˈæp.əl/',
-      meaning: '苹果',
-      definition: 'A round fruit that is usually red, green, or yellow.',
-      sentence: 'This is an apple on the table.'
-    }
-
-    localStorage.setItem('wordResult', JSON.stringify(mockResult))
-
+  try {
+    await recognizeAndStore(file)
     showCameraMenu.value = false
     router.push('/result')
-
+  } catch (error) {
+    alert(error.message || 'Failed to recognize the image.')
+  } finally {
     event.target.value = ''
+    recognizing.value = false
   }
-
-  reader.onerror = () => {
-    alert('Failed to read the image.')
-    event.target.value = ''
-  }
-
-  reader.readAsDataURL(file)
 }
 </script>
 
@@ -437,7 +431,6 @@ const handleFileChange = (event) => {
   transform: translateY(-8px);
 }
 
-/* 平板 */
 @media (max-width: 1024px) {
   .hero-title {
     font-size: 48px;
@@ -467,7 +460,6 @@ const handleFileChange = (event) => {
   }
 }
 
-/* 手机 */
 @media (max-width: 768px) {
   .home-page {
     padding: 12px;

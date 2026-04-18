@@ -4,136 +4,117 @@ import {
   addWordToVocab,
   getWordList,
   getWordDetail,
-  toggleCollect,         // 收藏/取消收藏
-  toggleReviewStatus     // 切换复习状态
+  toggleCollect,
+  toggleReviewStatus
 } from '@/services'
 
 export const useWordStore = defineStore('word', {
   state: () => ({
-    wordList: [],        // 所有加入单词本的单词（已收藏）
-    wordDetail: null,    // 当前打开的单词详情
-    loading: false       // 加载状态
+    wordList: [],
+    wordDetail: null,
+    loading: false
   }),
 
   actions: {
-    // 1. 拍照识词
     async recognizeImageWord(formData) {
       try {
         return await recognizeWordByImage(formData)
       } catch (err) {
-        console.error('拍照识词失败', err)
+        console.error('Failed to recognize image word:', err)
+        throw err
       }
     },
 
-    // 2. 添加单词到单词本（拍照识别后调用）
     async addWord(data) {
       try {
         const res = await addWordToVocab(data)
-        if (res) {
-          // 新加入单词：已收藏 + 未复习
-          this.wordList.push({
-            ...data,
-            id: res.id,
-            isCollected: true,    // 已收藏 → 出现在 All
-            isReviewed: false     // 未复习 → 出现在 Reviewing
-          })
+        const word = res?.word || null
+        if (word) {
+          this.wordList.unshift(word)
         }
-        return res
+        return word
       } catch (err) {
-        console.error('添加单词失败', err)
+        console.error('Failed to add word:', err)
+        throw err
       }
     },
 
-    // 3. 获取单词本列表
     async fetchWordList(params) {
       this.loading = true
       try {
-        const data = await getWordList(params)
-        // 自动补全状态字段，保证前端不报错
-        this.wordList = data.map(word => ({
-          ...word,
-          isCollected: word.isCollected ?? true,
-          isReviewed: word.isReviewed ?? false
-        }))
+        const res = await getWordList(params)
+        this.wordList = Array.isArray(res?.list) ? res.list : []
+        return this.wordList
       } catch (err) {
-        console.error('获取单词列表失败', err)
+        console.error('Failed to fetch word list:', err)
+        this.wordList = []
+        throw err
       } finally {
         this.loading = false
       }
     },
 
-    // 4. 获取单词详情
     async fetchWordDetail(wordId) {
       try {
-        const data = await getWordDetail(wordId)
-        this.wordDetail = {
-          ...data,
-          isCollected: data.isCollected ?? true,
-          isReviewed: data.isReviewed ?? false
-        }
+        const res = await getWordDetail(wordId)
+        this.wordDetail = res?.word || null
+        return this.wordDetail
       } catch (err) {
-        console.error('获取单词详情失败', err)
+        console.error('Failed to fetch word detail:', err)
+        throw err
       }
     },
 
-    // ==============================
-    // 5. 【核心】切换收藏状态（WordCard 星星）
-    // 控制：加入 All / 移出 All
-    // ==============================
     async toggleWordCollect(wordId) {
       try {
-        await toggleCollect(wordId)
+        const res = await toggleCollect(wordId)
+        const updatedWord = res?.word
 
-        // 更新本地列表状态
-        const target = this.wordList.find(w => w.id === wordId)
-        if (target) target.isCollected = !target.isCollected
+        if (updatedWord) {
+          const index = this.wordList.findIndex(word => word.id === wordId)
+          if (index !== -1) {
+            this.wordList.splice(index, 1, updatedWord)
+          }
 
-        // 更新详情页
-        if (this.wordDetail?.id === wordId) {
-          this.wordDetail.isCollected = !this.wordDetail.isCollected
+          if (this.wordDetail?.id === wordId) {
+            this.wordDetail = updatedWord
+          }
         }
 
-        return true
+        return updatedWord
       } catch (err) {
-        console.error('收藏状态切换失败', err)
-        return false
+        console.error('Failed to toggle collect status:', err)
+        throw err
       }
     },
 
-    // ==============================
-    // 6. 【核心】切换复习状态（FlipCard 对号）
-    // 控制：Reviewing ↔ Reviewed
-    // ==============================
     async toggleWordReviewStatus(wordId) {
       try {
-        await toggleReviewStatus(wordId)
+        const res = await toggleReviewStatus(wordId)
+        const updatedWord = res?.word
 
-        const target = this.wordList.find(w => w.id === wordId)
-        if (target) target.isReviewed = !target.isReviewed
+        if (updatedWord) {
+          const index = this.wordList.findIndex(word => word.id === wordId)
+          if (index !== -1) {
+            this.wordList.splice(index, 1, updatedWord)
+          }
 
-        if (this.wordDetail?.id === wordId) {
-          this.wordDetail.isReviewed = !this.wordDetail.isReviewed
+          if (this.wordDetail?.id === wordId) {
+            this.wordDetail = updatedWord
+          }
         }
 
-        return true
+        return updatedWord
       } catch (err) {
-        console.error('复习状态切换失败', err)
-        return false
+        console.error('Failed to toggle review status:', err)
+        throw err
       }
     }
   },
 
-  // ==============================
-  // 三个分类严格对应页面
-  // ==============================
   getters: {
-    // All：只显示已收藏的单词
-    allWords: (state) => state.wordList.filter(w => w.isCollected),
-
-    // Reviewing：已收藏 + 未复习
-    reviewingWords: (state) => state.wordList.filter(w => w.isCollected && !w.isReviewed),
-
-    // Reviewed：已收藏 + 已复习
-    reviewedWords: (state) => state.wordList.filter(w => w.isCollected && w.isReviewed)
+    allWords: state => state.wordList.filter(word => word.isCollected),
+    reviewingWords: state => state.wordList.filter(word => word.isCollected && !word.isReviewed),
+    reviewedWords: state => state.wordList.filter(word => word.isCollected && word.isReviewed)
   }
 })

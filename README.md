@@ -1,5 +1,60 @@
-# Vue 3 + Vite
+# SnapWord Frontend
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + Vite frontend for the SnapWord project.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## Features
+
+- Upload or capture an image
+- Send the image to the FastAPI backend for recognition
+- Show the recognized result
+- Save recognized words to the logged-in user's account
+- Review and learn words per account
+
+## Development
+
+Install dependencies:
+
+```powershell
+npm install
+```
+
+Start the frontend:
+
+```powershell
+npm run dev
+```
+
+By default, the Vite dev server proxies `/api/*` requests to:
+
+```text
+http://127.0.0.1:8000
+```
+
+If your backend uses a different address, set this environment variable before starting Vite:
+
+```powershell
+$env:VITE_API_PROXY_TARGET='http://127.0.0.1:8000'
+```
+
+## Production API URL
+
+If you want the frontend to call a deployed backend directly, set:
+
+```powershell
+$env:VITE_API_BASE_URL='https://your-backend-domain.com'
+```
+
+Then build the frontend:
+
+```powershell
+npm run build
+```
+
+## Main Pages
+
+- `/` home
+- `/camera` camera capture
+- `/result` recognition result
+- `/learn` learning page
+- `/review` review page
+- `/profile` login/profile
